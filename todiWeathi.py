@@ -5,7 +5,7 @@ from tkinter import Tk
 import json
 import datetime
 import requests
-
+import random
 
 # json 파일에 사용자 정보 저장
 def sendInform(ID, pos, weathi):
@@ -19,6 +19,12 @@ def sendInform(ID, pos, weathi):
     })
     data['targets'] = []
     data['targets'].append({})
+    data['stickers'] = []
+    data['stickers'].append({})
+    data['stickers'].append({'cnt': 0})
+    data['character'] = []
+    data['character'].append(['knife','tears','mist','orange','pear'])
+    data['character'].append([])
 
     with open(file_path, 'w') as outfile:
         json.dump(data, outfile)
@@ -66,15 +72,18 @@ def gtTarget(now):
 
     def clickEvent():
         target1 = entry.get()
-        if len(target1) > 10:
+        if target1 == '':
+            show_warning(targt, "목표를 입력해주세요.")
+        elif len(target1) > 10:
             show_warning(targt, "목표는 10글자 이내입니다.")
             return
         elif not checkID(targt, target1):
             return
         else:
             sendPlace(now, target1)
-            targt.destroy()
+            global target
             target = target1
+            targt.destroy()
 
     submit = Button(targt, text="제출", command=clickEvent)
 
@@ -126,7 +135,9 @@ def gtUserInform():
         3. 지역을 선택하지 않은 경우
         4. 날씨를 선택하지 않은 경우
         '''
-        if len(ID) > 10:
+        if ID == '':
+            show_warning(root, "이름을 입력하시오.")
+        elif len(ID) > 10:
             show_warning(root, "이름은 10자 이내입니다.")
             return
         elif not checkID(root, ID):
@@ -141,7 +152,6 @@ def gtUserInform():
         else:
             sendInform(ID, pos, weathi)
             root.destroy()
-            return
 
     # 버튼
     submit = Button(root, text="제출", command=clickEvent)
@@ -162,7 +172,70 @@ def gtUserInform():
     root.mainloop()
 
 
-def showInterface(tmi, city,target):
+# 스티커 받은 기록 보는 곳
+def chkStRecord(now):
+    file_path = './UserInform.json'
+    with open(file_path, "r") as json_file:
+        user_data = json.load(json_file)
+    stRecord = user_data['stickers'][0]
+    if now in stRecord.keys():
+        return True
+    else:
+        return False
+
+
+def chgeSt(n,op):
+    with open('UserInform.json', 'r') as file:
+        data = json.load(file)
+    cnt = data['stickers'][1]['cnt']
+    if op==1:
+        data['stickers'][1]['cnt'] -= n
+    else:
+        data['stickers'][1]['cnt'] += n
+
+    with open('userInform.json', 'w') as file:
+        json.dump(data, file)
+
+
+def recordgetSt(now):
+    with open('UserInform.json', 'r') as file:
+        data = json.load(file)
+    data['stickers'][0][now] = 'gg'
+    with open('userInform.json', 'w') as file:
+        json.dump(data, file)
+
+def chkStCnt():
+    with open('UserInform.json', 'r') as file:
+        data = json.load(file)
+    a = data['stickers'][1]['cnt']
+    if a>=100:
+        return True
+    else:
+        return False
+
+def getCnt():
+    with open('UserInform.json', 'r') as file:
+        data = json.load(file)
+    return data['stickers'][1]['cnt']
+
+def GetCha():
+    with open('UserInform.json', 'r') as file:
+        data = json.load(file)
+    index = random.randrange(len(data['character'][0]))
+    data['character'][1].append(data['character'][0][index])
+    del data['character'][0][index]
+
+    with open('userInform.json', 'w') as file:
+        json.dump(data, file)
+
+def chaCnt():
+    with open('UserInform.json', 'r') as file:
+        data = json.load(file)
+    return data['character'][1]
+
+
+# 인터페이스 띄우는 함수
+def showInterface(tmi, city, wrstW, target, now,ID):
     # 인터페이스 설정
     interface = Tk()
     interface.title("todiWeathi")
@@ -209,8 +282,7 @@ def showInterface(tmi, city,target):
     # 왼쪽 인터페이스 디자인
     loc = Label(interface, text=f'Location:{city}', font=("Helvetica", 30), fg="white", bg="#57adff")
     loc.place(x=650, y=10)
-    ching = Label(interface, text=f'칭찬스티커:개', font=("Helvetica", 15), fg="white", bg="#57adff")
-    ching.place(x=760, y=48)
+
     temp = tmi['weather']
 
     # 날씨에 따라 아이콘 보이기
@@ -252,8 +324,12 @@ def showInterface(tmi, city,target):
             icon = PhotoImage(file="image/brokenclouds.png")
             Label(interface, image=icon, bg="#57adff").place(x=700, y=70)
 
+
+    hello = Label(interface, text=f"{ID}님! 오늘도 즐거운 하루되세요!", font=("Helvetica", 15), fg="white", bg="#57adff")
+    hello.place(x=665, y=48)
+
     # 날씨 알려주기
-    w = Label(interface, text=tmi['weather'], font=("Helvetica", 40), fg="white", bg="#57adff")
+    w = Label(interface, text=tmi['weather'], font=("Helvetica", 40), fg="white", bg="#203243")
     w.place(x=722, y=180)
 
     # 목적지 gui
@@ -261,11 +337,92 @@ def showInterface(tmi, city,target):
     Label(interface, image=Round_box2, bg="#57adff").place(x=30, y=250)
     loc2 = Label(interface, text=f'오늘의 목적지:{target}', font=("Helvetica", 15), fg="white", bg="#203243")
     loc2.place(x=100, y=300)
-    done = Button(interface, text="도착!",command=clickEvent)
-    done.place(x=140,y=330)
-    # 칭찬스티커 개수 올리는 함수 구현
-    
-    def clickEvent():
+
+    # 랜덤박스 gui
+    Round_box3 = PhotoImage(file="image/검은사각형 복사본.png")
+    Label(interface, image=Round_box3, bg="#57adff").place(x=322, y=250)
+    giftI = PhotoImage(file="image/gift.png")
+    Label(interface, image=giftI).place(x=340, y=270)
+    ran = Label(interface, text='랜덤박스를 열고 캐릭터를 모으세요!', font=("Helvetica", 15), fg="white", bg="orange")
+    ran.place(x=400, y=250)
+    ran2 = Label(interface, text='칭찬스티커 100개 소요', font=("Helvetica", 15), fg="white", bg="#203243")
+    ran2.place(x=450, y=290)
+
+    #캐릭터들 gui
+    characters = chaCnt()
+    if 'knife' in characters:
+        char1 = PhotoImage(file="image/캐릭터/신민호의칼날.png")
+        Label(interface, image=char1,bg="#57adff").place(x=450, y=70)
+    if 'tears' in characters:
+        char2 = PhotoImage(file="image/캐릭터/창대쌤의눈물.png")
+        Label(interface, image=char2,bg="#57adff").place(x=255, y=50)
+    if 'mist' in characters:
+        char3 = PhotoImage(file="image/캐릭터/먼지.png")
+        Label(interface, image=char3,bg="#57adff").place(x=350, y=30)
+    if 'orange' in characters:
+        char4 = PhotoImage(file="image/캐릭터/오렌지.png")
+        Label(interface, image=char4,bg="#57adff").place(x=525, y=70)
+    if 'pear' in characters:
+        char5 = PhotoImage(file="image/캐릭터/배.png")
+        Label(interface, image=char5,bg="#57adff").place(x=550, y=160)
+    if len(characters) ==0:
+        cheer = Label(interface, text='목적지에 도착하고 칭찬스티커를 모아서 인터페이스를 채우세요!', font=("Helvetica", 15), fg="white", bg="#57adff")
+        cheer.place(x=255, y=125)
+
+    #
+    # 알림
+    def tellAbtStk(sent):
+        warn = Label(interface, text=sent)
+        warn.place(x=140, y=350)
+        interface.after(3000, lambda: warn.destroy())
+
+    def clickEvent(now, tmi, wrstW):
+        # now = datetime.datetime.now()
+        # now_str = f"{now.year}.{now.month}.{now.day}"
+        if chkStRecord(now):
+            tellAbtStk("오늘은 이미 받았습니다.")
+            return
+        else:
+            recordgetSt(now)
+            tellAbtStk("성공!!")
+
+            if tmi['weather'] == wrstW:
+                chgeSt(6,0)
+                return
+            else:
+                chgeSt(3,0)
+                return
+
+    done = Button(interface, text="도착!", command=lambda: clickEvent(now, tmi, wrstW))  # 왜 람다를 썼냐 -> chatgpt
+    done.place(x=140, y=330)
+
+    def tellAbtStk2(sent):
+        warn = Label(interface, text=sent)
+        warn.place(x=400, y=400)
+        interface.after(3000, lambda: warn.destroy())
+
+    def clickEvent2():
+        chas = chaCnt()
+        if len(chas) >= 5:
+            tellAbtStk2("캐릭터를 모두 수집했어요!")
+            return
+        if chkStCnt():
+            chgeSt(100,1)
+            GetCha()
+            tellAbtStk2("구매완료!!과연 어떤 캐릭터가 찾아올까요?다음 방문때 확인하세요!")
+        else:
+            tellAbtStk2("돈없는데 누르면,스티커를 입에,넣어버리겠습니다.")
+            return
+    def clickEvent3():
+        tellAbtStk(f"{getCnt()}만큼 있습니다.")
+
+    open = Button(interface, text="열기", command=clickEvent2)  # 왜 람다를 썼냐 -> chatgpt
+    open.place(x=490, y=325)
+
+
+
+
+
     interface.mainloop()
 
 
@@ -311,22 +468,30 @@ while True:
             wrstW = user_data['posts'][0]['weathi']
         break
     # 정보가 없으면 새로 입력받기
-    except:
+    except :
         gtUserInform()
 
 # 하루 가져오기
 now = datetime.datetime.now()
 now_str = f"{now.year}.{now.month}.{now.day}"
 
+
+target = ''
 # 목표 불러오기
 with open(file_path, "r") as json_file:
     user_data = json.load(json_file)
 try:
     target = user_data["targets"][0][now_str]
 except KeyError:
-    target = gtTarget(now_str)
+    gtTarget(now_str)
+
+
 
 tmi = getWeather(city)
 
-# print(target)
-showInterface(tmi, city,target)
+
+showInterface(tmi, city, wrstW, target, now_str,userID)
+
+# 1. 칭찬스티커 개수 알려주기
+# -> 버튼 누르면 알려줌 ㅇㅋ?
+# 2. 사용자 정보 초기화
