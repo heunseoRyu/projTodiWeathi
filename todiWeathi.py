@@ -1,4 +1,5 @@
 import tkinter
+from time import sleep
 from tkinter import *
 from tkinter.ttk import Combobox
 from tkinter import Tk
@@ -233,6 +234,10 @@ def chaCnt():
         data = json.load(file)
     return data['character'][1]
 
+def clear():
+    data = {}
+    with open('userInform.json', 'w') as file:
+        json.dump(data, file)
 
 # 인터페이스 띄우는 함수
 def showInterface(tmi, city, wrstW, target, now,ID):
@@ -326,7 +331,7 @@ def showInterface(tmi, city, wrstW, target, now,ID):
 
 
     hello = Label(interface, text=f"{ID}님! 오늘도 즐거운 하루되세요!", font=("Helvetica", 15), fg="white", bg="#57adff")
-    hello.place(x=665, y=48)
+    hello.place(x=630, y=48)
 
     # 날씨 알려주기
     w = Label(interface, text=tmi['weather'], font=("Helvetica", 40), fg="white", bg="#203243")
@@ -369,8 +374,14 @@ def showInterface(tmi, city, wrstW, target, now,ID):
         cheer = Label(interface, text='목적지에 도착하고 칭찬스티커를 모아서 인터페이스를 채우세요!', font=("Helvetica", 15), fg="white", bg="#57adff")
         cheer.place(x=255, y=125)
 
-    #
-    # 알림
+    Round_box4 = PhotoImage(file="image/검은사각형 복사본 2.png")
+    Label(interface, image=Round_box4, bg="#57adff").place(x=615, y=250)
+    c = Label(interface, text='내 칭찬스티커 개수는?', font=("Helvetica", 15), fg="white", bg="#203243")
+    c.place(x=675, y=290)
+
+
+
+    # 알려줌
     def tellAbtStk(sent):
         warn = Label(interface, text=sent)
         warn.place(x=140, y=350)
@@ -414,14 +425,42 @@ def showInterface(tmi, city, wrstW, target, now,ID):
             tellAbtStk2("돈없는데 누르면,스티커를 입에,넣어버리겠습니다.")
             return
     def clickEvent3():
-        tellAbtStk(f"{getCnt()}만큼 있습니다.")
+        warn = Label(interface, text=f"{getCnt()}개 모았어요!")
+        warn.place(x=800, y=400)
+        interface.after(3000, lambda: warn.destroy())
+    def clickEvent4():
+        global clrBtCnt
+        def clickEvent5():
+            global clrBtCnt
+            clrBtCnt = 0
+            clr2.destroy()
+            warn1 = Label(interface, text="취소되었습니다.", font="Helvetica 30")
+            warn1.place(x=300, y=425)
+            interface.after(3000, lambda: warn1.destroy())
+        if not clrBtCnt:
+            clr2 = Button(interface, text="초기화취소", command=clickEvent5)
+            clr2.place(x=650, y=425)
+            warn = Label(interface, text="정말 초기화하시겠습니까?버튼을 한번더 누르세요",font="Helvetica 30")
+            warn.place(x=300, y=425)
+            interface.after(3000, lambda: warn.destroy())
+            clrBtCnt = 1
+        else:
+            # 초기화
+            clear()
+            print("5초뒤에 화면이 꺼집니다.")
+            sleep(5)
+            interface.destroy()
+            return
+
+
 
     open = Button(interface, text="열기", command=clickEvent2)  # 왜 람다를 썼냐 -> chatgpt
     open.place(x=490, y=325)
+    stkCnt = Button(interface,text="확인하기",command=clickEvent3)
+    stkCnt.place(x=703,y=320)
 
-
-
-
+    clr = Button(interface, text="내 정보 초기화", command=clickEvent4)
+    clr.place(x=750, y=425)
 
     interface.mainloop()
 
@@ -488,10 +527,6 @@ except KeyError:
 
 
 tmi = getWeather(city)
-
+clrBtCnt = 0
 
 showInterface(tmi, city, wrstW, target, now_str,userID)
-
-# 1. 칭찬스티커 개수 알려주기
-# -> 버튼 누르면 알려줌 ㅇㅋ?
-# 2. 사용자 정보 초기화
