@@ -2,7 +2,7 @@ import requests
 import json
 
 city = "Seoul" # 도시
-apiKey = "24aa027670b6c7e617372b3c649ae18b" # API 키
+apiKey = "hidden" # API 키
 lang = "kr" # 언어
 units = "metric" # 섭씨 온도로 변경
 
